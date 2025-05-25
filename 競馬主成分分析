@@ -1,0 +1,80 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+# --- 1. Excelファイルとシートの読み込み ---
+file_name = 'augmented_cafe_sales.xlsx'
+sheet_name = 'Sheet1'
+
+# データ読み込み
+data = pd.read_excel(file_name, sheet_name=sheet_name)
+
+# --- 2. 数値データのみ抽出 ---
+numeric_data = data.select_dtypes(include=[np.number])
+
+# --- 3. 標準化 ---
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(numeric_data)
+
+# --- 4. PCAの実行 ---
+pca = PCA()
+pca.fit(scaled_data)
+
+# --- 5. 主成分得点係数（成分行列）と固有値を取得 ---
+components = pca.components_.T  # 転置して変数×主成分に
+eigenvalues = pca.explained_variance_
+
+# --- 6. 因子負荷量を計算 ---
+factor_loadings = components * np.sqrt(eigenvalues)
+
+# --- 7. DataFrameにまとめる ---
+loading_df = pd.DataFrame(factor_loadings,
+                          index=numeric_data.columns,
+                          columns=[f'PC{i+1}' for i in range(len(eigenvalues))])
+
+# --- 8. 結果表示 ---
+print("因子負荷量（Factor Loadings）:")
+print(loading_df)
+
+# =======================
+#       グラフ描画
+# =======================
+
+# --- 9. スクリープロット（寄与率）---
+plt.figure(figsize=(8, 5))
+plt.plot(range(1, len(pca.explained_variance_ratio_)+1),
+         pca.explained_variance_ratio_,
+         marker='o', linestyle='--', color='green')
+plt.title('screen plot (kakusyuseibunnokiyoritu)')
+plt.xlabel('syuseibun')
+plt.ylabel('kiyoritu')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# --- 10. バイプロット（PC1 vs PC2）---
+plt.figure(figsize=(8, 8))
+for i in range(loading_df.shape[0]):
+    plt.arrow(0, 0,
+              loading_df.iloc[i, 0],  # PC1
+              loading_df.iloc[i, 1],  # PC2
+              head_width=0.02, head_length=0.02,
+              fc='blue', ec='blue')
+    plt.text(loading_df.iloc[i, 0]*1.1,
+             loading_df.iloc[i, 1]*1.1,
+             loading_df.index[i],
+             color='black')
+
+plt.axhline(0, color='gray', linewidth=0.5)
+plt.axvline(0, color='gray', linewidth=0.5)
+plt.title('biplot（insihukaryou PC1vsPC2）')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.grid(True)
+plt.xlim(-1, 1)
+plt.ylim(-1, 1)
+plt.gca().set_aspect('equal', adjustable='box')
+plt.tight_layout()
+plt.show()
