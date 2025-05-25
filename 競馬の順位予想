@@ -1,0 +1,60 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
+
+# データ読み込み
+# ここでデータを読み込んでください。例: data = pd.read_csv('your_data.csv')
+
+# 必要な列を選択（例として数値データを使用）
+data = data.select_dtypes(include=[np.number])
+
+# 欠損値処理
+data = data.dropna()
+
+# 説明変数と目的変数に分ける（"1位"を目的変数とする）
+X = data.drop(columns=["1位"])
+#X = data[["年齢","予想オッズ","コース適正(芝１ダート0)","距離適正(短い0ながい1)","脚質(逃げ0追い込み1)","成長(早熟0晩成1)","２位","人気","着順平均","勝率(6戦ごと)","着順分散","期待値"]]
+y = data['1位']
+
+# データ分割
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 標準化
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# リッジ回帰
+ridge_model = Ridge(alpha=1)  # alphaの値を調整して正則化の強さを変える
+ridge_scores = cross_val_score(ridge_model, X_train_scaled, y_train, cv=9, scoring='r2')
+print(f"リッジ回帰のR2スコア (Cross-Validation): {np.mean(ridge_scores):.3f}")
+
+# モデルを訓練
+ridge_model.fit(X_train_scaled, y_train)
+
+# テストデータでのR2スコア
+test_score_ridge = ridge_model.score(X_test_scaled, y_test)
+print(f"テストデータでのR2スコア (リッジ回帰): {test_score_ridge:.3f}")
+
+# リッジ回帰式の係数と切片
+coefficients_ridge = ridge_model.coef_
+intercept_ridge = ridge_model.intercept_
+print("リッジ回帰式:")
+print(f"y = {intercept_ridge:.3f} + ")
+for i, coef in enumerate(coefficients_ridge):
+    print(f"({coef:.3f}) * X{i+1}", end=" ")
+print()
+
+# グラフの作成（予測値 vs 実測値）
+y_pred_ridge = ridge_model.predict(X_test_scaled)
+plt.figure(figsize=(8, 6))
+plt.scatter(y_test, y_pred_ridge, alpha=0.7, color='green')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], '--r', linewidth=2)
+plt.xlabel("real.value")
+plt.ylabel("predicted.value")
+
+plt.grid(True)
+plt.show()
